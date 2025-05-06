@@ -1,3 +1,4 @@
+import random
 import cv2
 from ultralytics import YOLO
 import pytesseract
@@ -30,12 +31,14 @@ if not os.path.exists(csv_file):
 #             return port.device
 #     return None
 
+
 def detect_arduino_port():
     ports = serial.tools.list_ports.comports()
     for port in ports:
         if "Arduino" in port.description:  # Works for most Arduino boards
             return port.device
     return None
+
 
 arduino_port = detect_arduino_port()
 if arduino_port:
@@ -47,9 +50,11 @@ else:
     arduino = None
 
 # ===== Ultrasonic Sensor Setup =====
-import random
+
+
 def mock_ultrasonic_distance():
     return random.choice([random.randint(10, 40)] + [random.randint(60, 150)] * 10)
+
 
 # Initialize webcam
 cap = cv2.VideoCapture(0)
@@ -79,7 +84,8 @@ while True:
                 # Plate Image Processing
                 gray = cv2.cvtColor(plate_img, cv2.COLOR_BGR2GRAY)
                 blur = cv2.GaussianBlur(gray, (5, 5), 0)
-                thresh = cv2.threshold(blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
+                thresh = cv2.threshold(
+                    blur, 0, 255, cv2.THRESH_BINARY + cv2.THRESH_OTSU)[1]
 
                 # OCR Extraction
                 plate_text = pytesseract.image_to_string(
@@ -92,24 +98,28 @@ while True:
                     plate_candidate = plate_text[start_idx:]
                     if len(plate_candidate) >= 7:
                         plate_candidate = plate_candidate[:7]
-                        prefix, digits, suffix = plate_candidate[:3], plate_candidate[3:6], plate_candidate[6]
+                        prefix, digits, suffix = plate_candidate[:
+                                                                 3], plate_candidate[3:6], plate_candidate[6]
                         if (prefix.isalpha() and prefix.isupper() and
-                            digits.isdigit() and suffix.isalpha() and suffix.isupper()):
+                                digits.isdigit() and suffix.isalpha() and suffix.isupper()):
                             print(f"[VALID] Plate Detected: {plate_candidate}")
                             plate_buffer.append(plate_candidate)
 
                             # Decision after 3 captures
                             if len(plate_buffer) >= 3:
-                                most_common = Counter(plate_buffer).most_common(1)[0][0]
+                                most_common = Counter(
+                                    plate_buffer).most_common(1)[0][0]
                                 current_time = time.time()
 
                                 if (most_common != last_saved_plate or
-                                    (current_time - last_entry_time) > entry_cooldown):
+                                        (current_time - last_entry_time) > entry_cooldown):
 
                                     with open(csv_file, 'a', newline='') as f:
                                         writer = csv.writer(f)
-                                        writer.writerow([most_common, 0,time.strftime('%Y-%m-%d %H:%M:%S')])
-                                    print(f"[SAVED] {most_common} logged to CSV.")
+                                        writer.writerow(
+                                            [most_common, 0, time.strftime('%Y-%m-%d %H:%M:%S')])
+                                    print(
+                                        f"[SAVED] {most_common} logged to CSV.")
 
                                     if arduino:
                                         arduino.write(b'1')
@@ -121,7 +131,8 @@ while True:
                                     last_saved_plate = most_common
                                     last_entry_time = current_time
                                 else:
-                                    print("[SKIPPED] Duplicate within 5 min window.")
+                                    print(
+                                        "[SKIPPED] Duplicate within 5 min window.")
 
                                 plate_buffer.clear()
 
